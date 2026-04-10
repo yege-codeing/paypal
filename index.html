@@ -133,61 +133,40 @@
 <!-- PayPal SDK -->
 <script src="https://www.paypal.com/sdk/js?client-id=Ad2ZiaJ0ygH0QHmlKX9gFszxhImMXldDduvmU9H6OuRDVbHVJ2W2QFhyQRDUrXAz7Wp7QjknzW7PZJsn&currency=USD&intent=capture" data-sdk-integration-source="button-factory"></script>
 <script>
-  function initPayPal() {
-    const clientId = document.getElementById('paypal-button-container').dataset.clientId;
-    if (!clientId) {
-      document.getElementById('message').className = 'error';
-      document.getElementById('message').innerText = '请先配置 PayPal Client ID（编辑 HTML 文件中的 client-id）';
-      return;
+  paypal.Buttons({
+    style: {
+      layout: 'vertical',
+      color: 'gold',
+      shape: 'rect',
+      label: 'paypal',
+    },
+    createOrder: function(data, actions) {
+      const buyerEmail = document.getElementById('buyerEmail').value;
+      return actions.order.create({
+        purchase_units: [{
+          description: '测试商品 Payment Test',
+          amount: { value: '10.00' },
+        }],
+      });
+    },
+    onApprove: function(data, actions) {
+      return actions.order.capture().then(function(details) {
+        const msg = document.getElementById('message');
+        msg.className = 'success';
+        msg.innerHTML = '✅ 支付成功！<br/>payer: ' + (details.payer?.name?.given_name || details.payer?.email_address || 'N/A') + '<br/>Order ID: ' + data.orderID;
+      });
+    },
+    onError: function(err) {
+      const msg = document.getElementById('message');
+      msg.className = 'error';
+      msg.innerText = '支付出错: ' + (err.message || err);
+    },
+    onCancel: function(data) {
+      const msg = document.getElementById('message');
+      msg.className = 'error';
+      msg.innerText = '支付已取消，Order ID: ' + data.orderID;
     }
-
-    paypal.Buttons({
-      style: {
-        layout: 'vertical',
-        color: 'gold',
-        shape: 'rect',
-        label: 'paypal',
-      },
-      createOrder: function(data, actions) {
-        const buyerEmail = document.getElementById('buyerEmail').value;
-        return actions.order.create({
-          purchase_units: [{
-            description: '测试商品 Payment Test',
-            amount: { value: '10.00', breakdown: { total: '10.00' } },
-            payee: { email_address: buyerEmail },
-          }],
-          application_context: {
-            brand_name: 'Payment Test Shop',
-            landing_page: 'billing',
-            user_action: 'commit',
-          }
-        });
-      },
-      onApprove: function(data, actions) {
-        return actions.order.capture().then(function(details) {
-          const msg = document.getElementById('message');
-          msg.className = 'success';
-          msg.innerHTML = `✅ 支付成功！<br/>payer: ${details.payer?.name?.given_name || details.payer?.email_address || 'N/A'}<br/>Order ID: ${data.orderID}`;
-          console.log('Capture result:', details);
-        });
-      },
-      onError: function(err) {
-        const msg = document.getElementById('message');
-        msg.className = 'error';
-        msg.innerText = '支付出错: ' + (err.message || err);
-        console.error(err);
-      },
-      onCancel: function(data) {
-        const msg = document.getElementById('message');
-        msg.className = 'error';
-        msg.innerText = '支付已取消，Order ID: ' + data.orderID;
-      }
-    }).render('#paypal-button-container');
-  }
-
-  // 沙盒模式提示（未配置 client-id 时显示说明）
-  document.getElementById('message').className = 'error';
-  document.getElementById('message').innerText = '请编辑本文件，将 PayPal SDK src 中的 client-id 替换为你的沙盒 Client ID';
+  }).render('#paypal-button-container');
 </script>
 
 </body>
