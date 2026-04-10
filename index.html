@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PayPal 支付测试</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      padding: 40px;
+      width: 420px;
+      max-width: 95vw;
+    }
+    .header { text-align: center; margin-bottom: 32px; }
+    .header h1 { font-size: 22px; color: #333; margin-bottom: 8px; }
+    .header p { font-size: 14px; color: #888; }
+    .product {
+      background: #f9fafb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid #e5e7eb;
+    }
+    .product-name { font-size: 16px; font-weight: 600; color: #111; margin-bottom: 6px; }
+    .product-desc { font-size: 13px; color: #666; margin-bottom: 12px; }
+    .product-price { font-size: 28px; font-weight: 700; color: #0070ba; }
+    .product-price span { font-size: 14px; font-weight: 400; color: #666; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 13px; color: #555; margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #0070ba; }
+    .form-row { display: flex; gap: 12px; }
+    .form-row .form-group { flex: 1; }
+    .btn-paypal {
+      width: 100%;
+      padding: 13px;
+      background: #0070ba;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .btn-paypal:hover { background: #005ea6; }
+    .btn-paypal svg { width: 20px; height: 20px; }
+    .divider { text-align: center; margin: 20px 0; color: #aaa; font-size: 12px; position: relative; }
+    .divider::before, .divider::after {
+      content: ''; position: absolute; top: 50%; width: 35%; height: 1px; background: #e5e7eb;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+    .other-methods { text-align: center; font-size: 13px; color: #888; }
+    .note { font-size: 11px; color: #aaa; text-align: center; margin-top: 16px; line-height: 1.5; }
+    #message { margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 14px; display: none; text-align: center; }
+    #message.success { background: #d1fae5; color: #065f46; display: block; }
+    #message.error { background: #fee2e2; color: #991b1b; display: block; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🛒 支付测试页面</h1>
+    <p>PayPal 沙盒环境测试</p>
+  </div>
+
+  <div class="product">
+    <div class="product-name">测试商品（可自定义）</div>
+    <div class="product-desc">用于验证 PayPal 支付流程是否正常工作</div>
+    <div class="product-price">$10.00 <span>USD</span></div>
+  </div>
+
+  <!-- 买家信息（可选，用于模拟） -->
+  <div class="form-group">
+    <label>买家邮箱（沙盒测试账户）</label>
+    <input type="email" id="buyerEmail" placeholder="sb-xxxxx@business.example.com" value="sb-xxxxx@business.example.com" />
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label>持卡人姓名</label>
+      <input type="text" id="cardName" placeholder="Test Buyer" />
+    </div>
+    <div class="form-group">
+      <label>国家</label>
+      <select id="country">
+        <option value="US">美国 US</option>
+        <option value="CN">中国 CN</option>
+        <option value="JP">日本 JP</option>
+        <option value="GB">英国 GB</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PayPal 按钮区域 -->
+  <div id="paypal-button-container" style="margin-top:16px;"></div>
+
+  <!-- 结果提示 -->
+  <div id="message"></div>
+
+  <div class="note">
+    ⚠️ 本页面使用 PayPal 沙盒环境，不会产生真实扣款<br/>
+    登录 <a href="https://developer.paypal.com/" target="_blank" style="color:#0070ba;">developer.paypal.com</a> 创建沙盒账户
+  </div>
+</div>
+
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=&currency=USD&intent=capture" data-sdk-integration-source="button-factory"></script>
+<script>
+  function initPayPal() {
+    const clientId = document.getElementById('paypal-button-container').dataset.clientId;
+    if (!clientId) {
+      document.getElementById('message').className = 'error';
+      document.getElementById('message').innerText = '请先配置 PayPal Client ID（编辑 HTML 文件中的 client-id）';
+      return;
+    }
+
+    paypal.Buttons({
+      style: {
+        layout: 'vertical',
+        color: 'gold',
+        shape: 'rect',
+        label: 'paypal',
+      },
+      createOrder: function(data, actions) {
+        const buyerEmail = document.getElementById('buyerEmail').value;
+        return actions.order.create({
+          purchase_units: [{
+            description: '测试商品 Payment Test',
+            amount: { value: '10.00', breakdown: { total: '10.00' } },
+            payee: { email_address: buyerEmail },
+          }],
+          application_context: {
+            brand_name: 'Payment Test Shop',
+            landing_page: 'billing',
+            user_action: 'commit',
+          }
+        });
+      },
+      onApprove: function(data, actions) {
+        return actions.order.capture().then(function(details) {
+          const msg = document.getElementById('message');
+          msg.className = 'success';
+          msg.innerHTML = `✅ 支付成功！<br/>payer: ${details.payer?.name?.given_name || details.payer?.email_address || 'N/A'}<br/>Order ID: ${data.orderID}`;
+          console.log('Capture result:', details);
+        });
+      },
+      onError: function(err) {
+        const msg = document.getElementById('message');
+        msg.className = 'error';
+        msg.innerText = '支付出错: ' + (err.message || err);
+        console.error(err);
+      },
+      onCancel: function(data) {
+        const msg = document.getElementById('message');
+        msg.className = 'error';
+        msg.innerText = '支付已取消，Order ID: ' + data.orderID;
+      }
+    }).render('#paypal-button-container');
+  }
+
+  // 沙盒模式提示（未配置 client-id 时显示说明）
+  document.getElementById('message').className = 'error';
+  document.getElementById('message').innerText = '请编辑本文件，将 PayPal SDK src 中的 client-id 替换为你的沙盒 Client ID';
+</script>
+
+</body>
+</html>
